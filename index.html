@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>誕生日馬券シミュレーター</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #f4f1e8;
+    --card-bg: #ffffff;
+    --text: #1a1a1a;
+    --muted: #666;
+    --accent: #14603c;
+    --accent-dark: #0b3f28;
+    --gold: #b8860b;
+    --gold-light: #d9a916;
+    --border: #ddd6c4;
+    --error: #b3261e;
+    --ticket-bg: #fffdf6;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #10130f;
+      --card-bg: #1b201a;
+      --text: #eee;
+      --muted: #999;
+      --accent: #2f9e64;
+      --accent-dark: #1c6b42;
+      --gold: #d9a916;
+      --gold-light: #e8c34a;
+      --border: #33392f;
+      --ticket-bg: #191c15;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Hiragino Sans", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    display: flex;
+    justify-content: center;
+    padding: 24px 16px;
+  }
+  main {
+    width: 100%;
+    max-width: 480px;
+  }
+  .silks-bar {
+    height: 8px;
+    border-radius: 4px;
+    margin-bottom: 14px;
+    background: repeating-linear-gradient(
+      -45deg,
+      var(--accent), var(--accent) 10px,
+      var(--gold) 10px, var(--gold) 20px
+    );
+  }
+  h1 {
+    font-size: 1.35rem;
+    line-height: 1.5;
+    margin-bottom: 4px;
+  }
+  p.subtitle {
+    color: var(--muted);
+    font-size: 0.9rem;
+    margin-top: 0;
+    margin-bottom: 20px;
+  }
+  .card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-top: 3px solid var(--accent);
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+  .birthday-card {
+    border-top-color: var(--gold);
+  }
+  .birthday-card > label {
+    font-size: 1rem;
+    font-weight: 800;
+    margin-bottom: 10px;
+  }
+  fieldset {
+    border: none;
+    padding: 0;
+    margin: 0 0 16px;
+  }
+  legend {
+    font-weight: 700;
+    font-size: 0.85rem;
+    margin-bottom: 8px;
+    padding: 0;
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  label {
+    display: block;
+    font-size: 0.9rem;
+    margin-bottom: 6px;
+    font-weight: 600;
+  }
+  .radio-row {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 8px;
+    font-weight: normal;
+  }
+  .radio-row label {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-weight: normal;
+    margin-bottom: 0;
+  }
+  .radio-col {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .radio-col label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: normal;
+    margin-bottom: 0;
+  }
+  input[type="number"], select {
+    width: 100%;
+    padding: 10px;
+    font-size: 1rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg);
+    color: var(--text);
+  }
+  .field { margin-bottom: 16px; }
+  .birthday-row {
+    display: flex;
+    gap: 10px;
+  }
+  .birthday-row select {
+    font-size: 1.1rem;
+    font-weight: 700;
+    text-align: center;
+  }
+  .pattern-box {
+    margin-top: 14px;
+  }
+  .pattern-option {
+    background: var(--ticket-bg);
+    border: 1px dashed var(--gold);
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-bottom: 8px;
+  }
+  .pattern-option label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: normal;
+    font-size: 0.9rem;
+    margin-bottom: 0;
+  }
+  .pattern-option strong {
+    font-family: "Courier New", ui-monospace, monospace;
+    font-size: 1.05rem;
+    color: var(--accent);
+  }
+  #calc-button {
+    width: 100%;
+    padding: 13px;
+    font-size: 1rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    background: linear-gradient(180deg, var(--accent), var(--accent-dark));
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+  }
+  #calc-button:hover:not(:disabled) {
+    background: linear-gradient(180deg, var(--accent-dark), var(--accent-dark));
+  }
+  #calc-button:disabled {
+    background: var(--border);
+    color: var(--muted);
+    cursor: not-allowed;
+  }
+  #error-box {
+    color: var(--error);
+    font-size: 0.85rem;
+    min-height: 1.2em;
+    margin-bottom: 8px;
+  }
+  #result-box {
+    background: var(--ticket-bg);
+    border-style: dashed;
+    border-width: 2px;
+    border-color: var(--gold);
+    position: relative;
+  }
+  #result-box:not(:empty)::before {
+    content: "WIN TICKET";
+    position: absolute;
+    top: -10px;
+    left: 16px;
+    background: var(--gold);
+    color: #1a1a1a;
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    padding: 2px 8px;
+    border-radius: 4px;
+  }
+  .buy-summary {
+    text-align: center;
+    font-weight: 700;
+    font-family: "Courier New", ui-monospace, monospace;
+    font-size: 1.1rem;
+    color: var(--accent);
+    margin: 4px 0 16px;
+  }
+  #result-box dl {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    row-gap: 10px;
+  }
+  #result-box dt {
+    color: var(--muted);
+    font-size: 0.9rem;
+  }
+  #result-box dd {
+    margin: 0;
+    text-align: right;
+    font-weight: 700;
+    font-size: 1.05rem;
+    font-family: "Courier New", ui-monospace, monospace;
+  }
+  .no-data {
+    color: var(--muted);
+    text-align: center;
+  }
+  .win-list {
+    margin-top: 16px;
+    border-top: 1px dashed var(--border);
+    padding-top: 12px;
+  }
+  .win-list summary {
+    cursor: pointer;
+    font-weight: 700;
+    font-size: 0.9rem;
+    color: var(--accent);
+  }
+  .win-list table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 12px;
+    font-size: 0.85rem;
+  }
+  .win-list th, .win-list td {
+    text-align: left;
+    padding: 6px 4px;
+    border-bottom: 1px solid var(--border);
+  }
+  .win-list th {
+    color: #fff;
+    background: var(--accent);
+    font-weight: 600;
+  }
+  .win-list tbody tr:nth-child(odd) {
+    background: color-mix(in srgb, var(--accent) 8%, transparent);
+  }
+  .win-list td:last-child, .win-list th:last-child {
+    font-family: "Courier New", ui-monospace, monospace;
+  }
+</style>
+</head>
+<body>
+<main>
+  <div class="silks-bar"></div>
+  <h1>🎂 誕生日馬券シミュレーター</h1>
+  <p class="subtitle">あなたの誕生日から導き出した馬番で、ワイド・馬連を買い続けていたらどうなったかを計算します。</p>
+
+  <div class="card birthday-card">
+    <label>あなたの誕生日は？</label>
+    <div class="birthday-row">
+      <select id="birth-month"><option value="">月</option></select>
+      <select id="birth-day"><option value="">日</option></select>
+    </div>
+    <div class="pattern-box" id="pattern-box"></div>
+  </div>
+
+  <div class="card">
+    <fieldset>
+      <legend>買い方</legend>
+      <div class="radio-row">
+        <label><input type="radio" name="bet-type" value="wide" checked> ワイド</label>
+        <label><input type="radio" name="bet-type" value="quinella"> 馬連</label>
+      </div>
+    </fieldset>
+
+    <div class="field">
+      <label for="race-count">対象レース数</label>
+      <select id="race-count">
+        <option value="5">5レース</option>
+        <option value="10" selected>10レース</option>
+        <option value="30">30レース</option>
+        <option value="50">50レース</option>
+        <option value="100">100レース</option>
+        <option value="300">300レース</option>
+      </select>
+    </div>
+
+    <fieldset>
+      <legend>対象レースの選び方</legend>
+      <div class="radio-col">
+        <label><input type="radio" name="select-mode" value="recent" checked> 直近から</label>
+        <label><input type="radio" name="select-mode" value="random"> ランダム（計算のたびに変わります）</label>
+        <label><input type="radio" name="select-mode" value="venue"> 競馬場別</label>
+        <label><input type="radio" name="select-mode" value="arima"> 有馬記念のみ</label>
+        <label><input type="radio" name="select-mode" value="classic"> 3歳クラシックのみ（桜花賞・皐月賞・優駿牝馬・東京優駿・秋華賞・菊花賞）</label>
+      </div>
+    </fieldset>
+
+    <div class="field" id="venue-field" hidden>
+      <label for="venue-select">開催場</label>
+      <select id="venue-select">
+        <option value="">選択してください</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <label for="bet-amount">賭け金（1レースあたり）</label>
+      <input type="number" id="bet-amount" min="100" max="10000000" step="100" value="10000">
+    </div>
+
+    <div id="error-box"></div>
+    <button id="calc-button" disabled>計算する</button>
+  </div>
+
+  <div class="card" id="result-box"></div>
+</main>
+<script src="simulator.js"></script>
+</body>
+</html>
