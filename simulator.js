@@ -177,7 +177,7 @@ function getBuyNumbers() {
     return [month, Number(patternInput.value)];
   }
   const candidates = getDayCandidates(day, month);
-  return [month, candidates[0]];
+  return [month, candidates[0] ? candidates[0].value : null];
 }
 
 function bindEvents() {
