@@ -1,8 +1,10 @@
 let races = [];
+let forcedTansho = false;
 
 const monthSelect = document.getElementById('birth-month');
 const daySelect = document.getElementById('birth-day');
 const patternBox = document.getElementById('pattern-box');
+const betTypeField = document.getElementById('bet-type-field');
 const betTypeInputs = document.querySelectorAll('input[name="bet-type"]');
 const raceCountSelect = document.getElementById('race-count');
 const selectModeInputs = document.querySelectorAll('input[name="select-mode"]');
@@ -57,12 +59,42 @@ function populateVenueOptions() {
   }
 }
 
-function dayToPatternA(day) {
-  return day > 18 ? day - 18 : day;
+function isTanshoOnly(month, day) {
+  return month === day && day <= 9;
 }
 
-function dayToPatternB(day) {
-  return String(day).split('').reduce((sum, ch) => sum + Number(ch), 0);
+/**
+ * 日から馬番Bの候補一覧を作る：日そのもの（18以下の場合）、日の各桁（0を除く）、
+ * 日の桁の合計、をすべて候補にし、月と重複するものを除外する。
+ * それぞれの候補に「なぜその番号になったか」の説明文を付ける。
+ */
+function getDayCandidates(day, month) {
+  const dayStr = String(day);
+
+  if (dayStr.length === 1) {
+    return day === month ? [] : [{ value: day, label: `${day}日をそのまま` }];
+  }
+
+  const [tensChar, onesChar] = dayStr.split('');
+  const tens = Number(tensChar);
+  const ones = Number(onesChar);
+  const digitSum = tens + ones;
+
+  const labelMap = new Map();
+  const addCandidate = (value, label) => {
+    if (value <= 0) return;
+    if (!labelMap.has(value)) labelMap.set(value, []);
+    labelMap.get(value).push(label);
+  };
+
+  if (day <= 18) addCandidate(day, `${day}日をそのまま`);
+  addCandidate(tens, `${day}日の十の位（${tens}）`);
+  addCandidate(ones, `${day}日の一の位（${ones}）`);
+  addCandidate(digitSum, `${day}日→${tens}+${ones}で${digitSum}番`);
+
+  return Array.from(labelMap.entries())
+    .filter(([value]) => value !== month)
+    .map(([value, labels]) => ({ value, label: labels.join(' / ') }));
 }
 
 function updatePatterns() {
@@ -71,37 +103,57 @@ function updatePatterns() {
 
   if (!month || !day) {
     patternBox.innerHTML = '';
+    forcedTansho = false;
+    betTypeField.hidden = false;
     return;
   }
 
-  const a = dayToPatternA(day);
-  const b = dayToPatternB(day);
-  const sameValue = a === b;
-
-  if (sameValue) {
+  if (isTanshoOnly(month, day)) {
+    forcedTansho = true;
+    betTypeField.hidden = true;
     patternBox.innerHTML = `
       <div class="pattern-option">
-        買い目：<strong>${month}番 × ${a}番</strong>
+        月日が一致（${month}月${day}日）しているため、相方の馬番がありません。<br>
+        単勝で <strong>${month}番</strong> のみ買います。
       </div>
     `;
     return;
   }
 
-  patternBox.innerHTML = `
-    <div class="pattern-option">
-      <label>
-        <input type="radio" name="number-pattern" value="a" checked>
-        パターンA（18を超えたら18を引く）: <strong>${month}番 × ${a}番</strong>
-      </label>
-    </div>
-    <div class="pattern-option">
-      <label>
-        <input type="radio" name="number-pattern" value="b">
-        パターンB（日の各桁を合計）: <strong>${month}番 × ${b}番</strong>
-      </label>
-    </div>
-    <p class="buy-summary" id="selected-buy-summary"></p>
-  `;
+  forcedTansho = false;
+  betTypeField.hidden = false;
+
+  const candidates = getDayCandidates(day, month);
+
+  if (candidates.length === 0) {
+    patternBox.innerHTML = '<p class="no-data">有効な買い目を算出できませんでした</p>';
+    return;
+  }
+
+  if (candidates.length === 1) {
+    const c = candidates[0];
+    patternBox.innerHTML = `
+      <div class="pattern-option">
+        買い目：<strong>${month}番 × ${c.value}番</strong>
+        <div class="pattern-note">${c.label}</div>
+      </div>
+    `;
+    return;
+  }
+
+  const optionsHtml = candidates
+    .map((c, i) => `
+      <div class="pattern-option">
+        <label>
+          <input type="radio" name="number-pattern" value="${c.value}" ${i === 0 ? 'checked' : ''}>
+          ${month}番 × ${c.value}番
+        </label>
+        <div class="pattern-note">${c.label}</div>
+      </div>
+    `)
+    .join('');
+
+  patternBox.innerHTML = `${optionsHtml}<p class="buy-summary" id="selected-buy-summary"></p>`;
   updateSelectedBuySummary();
 }
 
@@ -115,10 +167,17 @@ function updateSelectedBuySummary() {
 function getBuyNumbers() {
   const month = Number(monthSelect.value);
   const day = Number(daySelect.value);
+
+  if (isTanshoOnly(month, day)) {
+    return [month, null];
+  }
+
   const patternInput = document.querySelector('input[name="number-pattern"]:checked');
-  const pattern = patternInput ? patternInput.value : 'a';
-  const numB = pattern === 'a' ? dayToPatternA(day) : dayToPatternB(day);
-  return [month, numB];
+  if (patternInput) {
+    return [month, Number(patternInput.value)];
+  }
+  const candidates = getDayCandidates(day, month);
+  return [month, candidates[0]];
 }
 
 function bindEvents() {
@@ -134,7 +193,10 @@ function bindEvents() {
     venueField.hidden = mode !== 'venue';
     validate();
   }));
-  calcButton.addEventListener('click', runSimulation);
+  calcButton.addEventListener('click', () => {
+    if (forcedTansho) runTanshoSimulation();
+    else runSimulation();
+  });
 }
 
 function getSelectMode() {
@@ -219,6 +281,9 @@ function runSimulation() {
   const winningRaces = [];
 
   for (const race of targetRaces) {
+    const fieldNumbers = new Set(race.horses.map((h) => h.number));
+    if (!fieldNumbers.has(numA) || !fieldNumbers.has(numB)) continue; // 出走していない馬番は対象外
+
     const pos1 = race.horses.find((h) => h.position === 1);
     const pos2 = race.horses.find((h) => h.position === 2);
     const pos3 = race.horses.find((h) => h.position === 3);
@@ -255,11 +320,51 @@ function runSimulation() {
   renderResult({ bets, investment, payout, wins, losses, winningRaces, numA, numB, betType });
 }
 
+function runTanshoSimulation() {
+  if (!validate()) return;
+
+  const [numA] = getBuyNumbers();
+  const selectMode = getSelectMode();
+  const venue = venueSelect.value;
+  const count = Number(raceCountSelect.value);
+  const betAmount = Number(betAmountInput.value);
+
+  const targetRaces = selectTargetRaces(selectMode, venue, count);
+
+  let bets = 0;
+  let investment = 0;
+  let payout = 0;
+  let wins = 0;
+  let losses = 0;
+  const winningRaces = [];
+
+  for (const race of targetRaces) {
+    const horse = race.horses.find((h) => h.number === numA);
+    if (!horse) continue; // 出走していない馬番は対象外
+
+    bets += 1;
+    investment += betAmount;
+
+    if (horse.position === 1) {
+      const amount = betAmount * horse.odds;
+      payout += amount;
+      wins += 1;
+      winningRaces.push({ race_name: race.race_name, year: race.year, amount });
+    } else {
+      losses += 1;
+    }
+  }
+
+  renderResult({ bets, investment, payout, wins, losses, winningRaces, numA, numB: null, betType: 'tansho' });
+}
+
 function renderResult({ bets, investment, payout, wins, losses, winningRaces, numA, numB, betType }) {
-  const betLabel = betType === 'quinella' ? '馬連' : 'ワイド';
+  const betLabelMap = { wide: 'ワイド', quinella: '馬連', tansho: '単勝' };
+  const betLabel = betLabelMap[betType];
+  const buySummary = numB ? `${numA}番 × ${numB}番（${betLabel}）` : `${numA}番（${betLabel}）`;
 
   if (bets === 0) {
-    resultBox.innerHTML = '<p class="no-data">対象レースがありませんでした</p>';
+    resultBox.innerHTML = `<p class="buy-summary">買い目：${buySummary}</p><p class="no-data">対象レースがありませんでした</p>`;
     return;
   }
 
@@ -271,7 +376,7 @@ function renderResult({ bets, investment, payout, wins, losses, winningRaces, nu
     .join('');
 
   resultBox.innerHTML = `
-    <p class="buy-summary">買い目：${numA}番 × ${numB}番（${betLabel}）</p>
+    <p class="buy-summary">買い目：${buySummary}</p>
     <dl>
       <dt>対象レース数</dt><dd>${bets}件</dd>
       <dt>投資額</dt><dd>${Math.round(investment).toLocaleString()}円</dd>
