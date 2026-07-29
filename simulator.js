@@ -78,6 +78,15 @@ function updatePatterns() {
   const b = dayToPatternB(day);
   const sameValue = a === b;
 
+  if (sameValue) {
+    patternBox.innerHTML = `
+      <div class="pattern-option">
+        買い目：<strong>${month}番 × ${a}番</strong>
+      </div>
+    `;
+    return;
+  }
+
   patternBox.innerHTML = `
     <div class="pattern-option">
       <label>
@@ -88,7 +97,7 @@ function updatePatterns() {
     <div class="pattern-option">
       <label>
         <input type="radio" name="number-pattern" value="b">
-        パターンB（日の各桁を合計）: <strong>${month}番 × ${b}番</strong>${sameValue ? '（パターンAと同じ）' : ''}
+        パターンB（日の各桁を合計）: <strong>${month}番 × ${b}番</strong>
       </label>
     </div>
   `;
