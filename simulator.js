@@ -223,14 +223,6 @@ function validate() {
   return !message;
 }
 
-function shuffle(arr) {
-  for (let i = arr.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [arr[i], arr[j]] = [arr[j], arr[i]];
-  }
-  return arr;
-}
-
 function buildPool(selectMode, venue) {
   if (selectMode === 'arima') {
     return races.filter((r) => r.race_name.includes(ARIMA_NAME));
@@ -246,9 +238,6 @@ function buildPool(selectMode, venue) {
 
 function selectTargetRaces(selectMode, venue, count) {
   const pool = buildPool(selectMode, venue);
-  if (selectMode === 'random') {
-    return shuffle(pool.slice()).slice(0, count);
-  }
   return pool.slice(0, count);
 }
 
