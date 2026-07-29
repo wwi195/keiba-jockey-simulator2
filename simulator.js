@@ -308,10 +308,10 @@ function runSimulation() {
     }
 
     if (rawPayout) {
-      const amount = (rawPayout / 100) * betAmount;
-      payout += amount;
+      const multiplier = rawPayout / 100;
+      payout += multiplier * betAmount;
       wins += 1;
-      winningRaces.push({ race_name: race.race_name, year: race.year, amount });
+      winningRaces.push({ race_name: race.race_name, year: race.year, multiplier });
     } else {
       losses += 1;
     }
@@ -346,10 +346,9 @@ function runTanshoSimulation() {
     investment += betAmount;
 
     if (horse.position === 1) {
-      const amount = betAmount * horse.odds;
-      payout += amount;
+      payout += betAmount * horse.odds;
       wins += 1;
-      winningRaces.push({ race_name: race.race_name, year: race.year, amount });
+      winningRaces.push({ race_name: race.race_name, year: race.year, multiplier: horse.odds });
     } else {
       losses += 1;
     }
@@ -372,7 +371,7 @@ function renderResult({ bets, investment, payout, wins, losses, winningRaces, nu
   const winRate = (wins / bets) * 100;
 
   const winRows = winningRaces
-    .map((r) => `<tr><td>${r.race_name}</td><td>${r.year}</td><td>${Math.round(r.amount).toLocaleString()}円</td></tr>`)
+    .map((r) => `<tr><td>${r.race_name}</td><td>${r.year}</td><td>${r.multiplier.toFixed(1)}倍</td></tr>`)
     .join('');
 
   resultBox.innerHTML = `
@@ -388,7 +387,7 @@ function renderResult({ bets, investment, payout, wins, losses, winningRaces, nu
     <details class="win-list">
       <summary>的中レース一覧を見る（${wins}件）</summary>
       <table>
-        <thead><tr><th>レース名</th><th>年</th><th>払戻額</th></tr></thead>
+        <thead><tr><th>レース名</th><th>年</th><th>払戻倍率</th></tr></thead>
         <tbody>${winRows}</tbody>
       </table>
     </details>
