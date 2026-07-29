@@ -100,7 +100,16 @@ function updatePatterns() {
         パターンB（日の各桁を合計）: <strong>${month}番 × ${b}番</strong>
       </label>
     </div>
+    <p class="buy-summary" id="selected-buy-summary"></p>
   `;
+  updateSelectedBuySummary();
+}
+
+function updateSelectedBuySummary() {
+  const el = document.getElementById('selected-buy-summary');
+  if (!el) return;
+  const [numA, numB] = getBuyNumbers();
+  el.textContent = `選択中の買い目：${numA}番 × ${numB}番`;
 }
 
 function getBuyNumbers() {
@@ -115,7 +124,7 @@ function getBuyNumbers() {
 function bindEvents() {
   monthSelect.addEventListener('change', () => { updatePatterns(); validate(); });
   daySelect.addEventListener('change', () => { updatePatterns(); validate(); });
-  patternBox.addEventListener('change', validate);
+  patternBox.addEventListener('change', () => { updateSelectedBuySummary(); validate(); });
   betAmountInput.addEventListener('input', validate);
   venueSelect.addEventListener('change', validate);
   betTypeInputs.forEach((el) => el.addEventListener('change', validate));
